@@ -34,6 +34,8 @@ LockPersonality=yes
 RestrictRealtime=yes
 RestrictNamespaces=yes
 RestrictSUIDSGID=yes
+Restart=on-failure
+RestartSec=30s
 
 [Install]
 WantedBy=multi-user.target
