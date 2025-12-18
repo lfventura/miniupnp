@@ -1,0 +1,189 @@
+# $Id: Makefile.linux_script $
+# MiniUPnP project - External Script Firewall Support
+# For systems where firewall management is done via external scripts
+# instead of direct iptables/nftables manipulation
+#
+# This Makefile is completely independent of nftables/iptables
+# It uses external scripts to manage firewall rules
+#
+# Usage:
+#   make -f Makefile.linux_script
+#
+# To install:
+#   DESTDIR=/dummyinstalldir make -f Makefile.linux_script install
+# or:
+#   INSTALLPREFIX=/usr/local make -f Makefile.linux_script install
+
+CONFIG_OPTIONS ?= $(shell cat .configure.cache 2>/dev/null)
+# Force script mode - no firewall backend
+ifeq ($(filter --firewall=script,$(CONFIG_OPTIONS)),)
+CONFIG_OPTIONS += --firewall=script
+endif
+
+# Security flags
+, := ,
+ifeq ($(filter -D_FORTIFY_SOURCE=% -Wp$(,)-D_FORTIFY_SOURCE=%,$(CPPFLAGS) $(CFLAGS)),)
+CPPFLAGS += -D_FORTIFY_SOURCE=2
+endif
+CPPFLAGS += -D_GNU_SOURCE
+
+# Enable external script support
+CPPFLAGS += -DUSE_EXTERNAL_SCRIPT
+
+# Compiler flags
+CFLAGS ?= -Os
+CFLAGS += -fno-strict-aliasing
+CFLAGS += -fno-common
+CFLAGS += -fstack-protector -fPIE
+CFLAGS += -Wall
+CFLAGS += -Wextra -Wstrict-prototypes -Wdeclaration-after-statement
+LDFLAGS += -Wl,-z,now -Wl,-z,relro -pie
+
+# Tools
+CC ?= gcc
+RM = rm -f
+INSTALL = install
+STRIP ?= strip
+CP = cp
+DOXYGEN ?= doxygen
+
+DEPDIR := .depend
+DEPFLAGS = -MMD -MP -MF $(@:%.o=$(DEPDIR)/%.d) -MT $@
+
+# Install paths
+INSTALLPREFIX ?= $(PREFIX)/usr
+ETCDIR ?= $(PREFIX)/etc
+SBINDIR ?= $(INSTALLPREFIX)/sbin
+MANDIR ?= $(INSTALLPREFIX)/share/man
+LIBDIR ?= $(INSTALLPREFIX)/lib
+
+CONFIGDIR = $(ETCDIR)/miniupnpd
+INITDIR = $(ETCDIR)/init.d
+SYSTEMDUNITDIR = $(LIBDIR)/systemd/system
+
+include config.mk
+include $(SRCDIR)/gitrev.mk
+include $(SRCDIR)/objects.mk
+
+# External script support objects - NO nftables/iptables dependencies
+# Only rdr_desc (internal tracking) and extscriptrdr (script execution)
+SCRIPTOBJS = netfilter/rdr_desc.o netfilter/extscriptrdr.o
+
+# For script mode, we pretend to be netfilter but don't link actual firewall libs
+ALLOBJS = $(BASEOBJS) $(LNXOBJS) $(SCRIPTOBJS) $(OTHEROBJS)
+
+# No need for nft scripts
+EXECUTABLES = miniupnpd miniupnpdctl
+
+ifeq ($(TESTS), 1)
+EXECUTABLES += testupnpdescgen testgetifstats \
+	testgetifaddr testupnppermissions testportinuse \
+	testasyncsendto testminissdp
+endif
+
+# Libraries - NO nftables libraries
+LDLIBS += -lcap-ng
+ifeq ($(HAVE_LIBUUID), yes)
+LDLIBS += -luuid
+endif
+
+.PHONY: all clean install depend dox check test everything \
+	install-man install-config installpythonmodule
+
+all: $(EXECUTABLES)
+
+everything: all installpythonmodule dox
+
+clean:
+	$(RM) $(ALLOBJS) $(EXECUTABLES)
+	$(RM) miniupnpdctl.o
+	$(RM) -r $(DEPDIR)
+	$(RM) validateupnppermissions validategetifaddr
+	$(RM) -r dox/
+	$(RM) -r build/
+
+distclean: clean
+	$(RM) config.mk config.h Makefile
+
+install: miniupnpd miniupnpd.8 miniupnpd.conf genuuid
+	$(STRIP) miniupnpd
+	$(INSTALL) -d $(DESTDIR)$(SBINDIR)
+	$(INSTALL) miniupnpd $(DESTDIR)$(SBINDIR)
+	$(INSTALL) -d $(DESTDIR)$(CONFIGDIR)
+	@$(INSTALL) --help 2>&1 | grep -- '--mode=' > /dev/null \
+		&& $(INSTALL) --mode=0644 -b miniupnpd.conf $(DESTDIR)$(CONFIGDIR) \
+		|| $(INSTALL) -b miniupnpd.conf $(DESTDIR)$(CONFIGDIR)
+	$(INSTALL) -d $(DESTDIR)$(MANDIR)/man8
+	$(INSTALL) --mode=0644 miniupnpd.8 $(DESTDIR)$(MANDIR)/man8
+	$(INSTALL) -d $(DESTDIR)$(SYSTEMDUNITDIR)
+
+install-config:
+	$(INSTALL) -d $(DESTDIR)$(CONFIGDIR)
+	@$(INSTALL) --help 2>&1 | grep -- '--mode=' > /dev/null \
+		&& $(INSTALL) --mode=0644 -b miniupnpd.conf $(DESTDIR)$(CONFIGDIR) \
+		|| $(INSTALL) -b miniupnpd.conf $(DESTDIR)$(CONFIGDIR)
+
+install-man:
+	$(INSTALL) -d $(DESTDIR)$(MANDIR)/man8
+	$(INSTALL) --mode=0644 miniupnpd.8 $(DESTDIR)$(MANDIR)/man8
+
+genuuid:
+ifeq ($(HAVE_LIBUUID), yes)
+	sed -i.bak 's/^uuid=[-0-9a-f]*/uuid=$(shell uuidgen 2>/dev/null)/' $(DESTDIR)$(CONFIGDIR)/miniupnpd.conf
+endif
+
+miniupnpd: config.h $(ALLOBJS)
+	$(CC) $(LDFLAGS) -o $@ $(ALLOBJS) $(LDLIBS)
+
+miniupnpdctl: config.h miniupnpdctl.o
+
+testupnpdescgen: config.h testupnpdescgen.o upnpdescgen.o
+
+testgetifstats: config.h testgetifstats.o getifstats.o
+
+testgetifaddr: config.h testgetifaddr.o getifaddr.o
+
+testupnppermissions: config.h testupnppermissions.o upnppermissions.o
+
+testportinuse: config.h testportinuse.o portinuse.o getifaddr.o
+
+testasyncsendto: config.h testasyncsendto.o asyncsendto.o upnputils.o \
+	bsd/getroute.o linux/getifstats.o
+
+testminissdp: config.h testminissdp.o minissdp.o upnputils.o upnpglobalvars.o \
+	asyncsendto.o linux/getroute.o linux/getifstats.o
+
+# Compilation rules
+%.o: $(SRCDIR)/%.c $(DEPDIR)/%.d | $(DEPDIR)
+	$(CC) -c $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $< -o $@
+
+linux/%.o: $(SRCDIR)/linux/%.c $(DEPDIR)/linux/%.d | $(DEPDIR)/linux
+	$(CC) -c $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $< -o $@
+
+netfilter/%.o: $(SRCDIR)/netfilter/%.c $(DEPDIR)/netfilter/%.d | $(DEPDIR)/netfilter
+	$(CC) -c $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $< -o $@
+
+config.mk config.h: $(SRCDIR)/configure $(SRCDIR)/VERSION
+	./configure $(CONFIG_OPTIONS)
+
+DEPFILES := $(ALLOBJS:%.o=$(DEPDIR)/%.d)
+$(DEPDIR): ; @mkdir -p $@
+$(DEPDIR)/linux: ; @mkdir -p $@
+$(DEPDIR)/netfilter: ; @mkdir -p $@
+
+$(DEPFILES):
+
+include $(wildcard $(DEPFILES))
+
+dox:
+	$(DOXYGEN) miniupnpd.doxyconf
+
+check test: validateupnppermissions validategetifaddr
+
+validateupnppermissions: testupnppermissions testupnppermissions.sh
+	./testupnppermissions.sh
+	touch $@
+
+validategetifaddr: testgetifaddr testgetifaddr.sh
+	./testgetifaddr.sh
+	touch $@

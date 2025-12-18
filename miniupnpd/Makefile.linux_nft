@@ -66,8 +66,6 @@ include $(SRCDIR)/objects.mk
 
 # sources in the netfilter_nft/ directory
 NETFILTEROBJS = nftnlrdr.o nftpinhole.o nfct_get.o nftnlrdr_misc.o
-# External script support objects (only used if USE_EXTERNAL_SCRIPT is defined in config.h)
-NETFILTEROBJS += netfilter/rdr_desc.o netfilter/extscriptrdr.o
 
 ALLOBJS = $(BASEOBJS) $(LNXOBJS) $(NETFILTEROBJS) $(OTHEROBJS)
 
@@ -146,10 +144,6 @@ config.mk config.h:	$(SRCDIR)/configure $(SRCDIR)/VERSION
 %.o:	$(SRCDIR)/netfilter_nft/%.c $(DEPDIR)/%.d | $(DEPDIR)
 	$(CC) -c $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $< -o $@
 
-netfilter/%.o:	$(SRCDIR)/netfilter/%.c $(DEPDIR)/netfilter/%.d | $(DEPDIR)/netfilter
-	$(CC) -c $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $< -o $@
-
-$(DEPDIR)/netfilter: ; @mkdir -p $@
 
 DEPFILES := $(ALLOBJS:%.o=$(DEPDIR)/%.d)
 $(DEPDIR): ; @mkdir -p $@
