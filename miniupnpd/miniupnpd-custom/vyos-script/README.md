@@ -31,7 +31,7 @@ FIREWALL_NAME="your-firewall-name"
 Point MiniUPnPd to the root script in your `miniupnpd.conf`:
 ```ini
 use_external_script=yes
-external_script_path=/path/to/miniupnp-firewall.sh
+external_script_path=/path/to/miniupnp-firewall.sh  # At my example, the script is at /adm_srv
 ```
 
 ## Testing

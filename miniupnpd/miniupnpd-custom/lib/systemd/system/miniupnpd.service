@@ -4,44 +4,36 @@ Documentation=man:miniupnpd(8)
 After=network-online.target
 
 [Service]
-#Type=forking
-Type=simple
+Type=forking
 EnvironmentFile=-/etc/default/miniupnpd
 #ExecStartPre commented as it is not necessary for the mode this fork is intended (script to fw)
 #ExecStartPre=/usr/libexec/miniupnpd-startstop-helper.sh start
-ExecStart=/usr/sbin/miniupnpd -f /etc/miniupnpd/miniupnpd.conf $MiniUPnPd_OTHER_OPTIONS -d
+ExecStart=/usr/sbin/miniupnpd -f /etc/miniupnpd/miniupnpd.conf $MiniUPnPd_OTHER_OPTIONS -vv
 #ExecStopPos commented as it is not necessary for the mode this fork is intended (script to fw)
 #ExecStopPost=/usr/libexec/miniupnpd-startstop-helper.sh stop
 PIDFile=/run/miniupnpd.pid
 StandardOutput=journal
 StandardError=journal
 ProtectClock=no
-
-#TEMP
-RestrictSUIDSGID=no
-#AmbientCapabilities=CAP_SETUID CAP_SETGID
+RestrictSUIDSGID=no # Precisa ser 'no' para sg funcionar
 AmbientCapabilities=CAP_SETUID CAP_SETGID CAP_NET_ADMIN CAP_NET_RAW CAP_NET_BROADCAST CAP_SYSLOG CAP_SYS_ADMIN CAP_AUDIT_WRITE CAP_DAC_OVERRIDE CAP_MKNOD CAP_SYS_TIME
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BROADCAST CAP_NET_RAW CAP_SYSLOG CAP_SETUID CAP_SETGID CAP_SYS_ADMIN CAP_AUDIT_WRITE CAP_DAC_OVERRIDE CAP_MKNOD CAP_SYS_TIME
-MemoryDenyWriteExecute=no
+MemoryDenyWriteExecute=no # Precisa ser 'no' para scripts bash funcionarem
 ProtectSystem=no
 DevicePolicy=auto
 DeviceAllow=/dev/fuse rw
 PrivateDevices=no
-#TEMP
 
-# for /etc/miniupnpd/nft_removeall.sh. miniupnpd alone needs only 1.
+# for vyos scripts. miniupnpd alone needs only 1.
 TasksMax=20
 #CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BROADCAST CAP_NET_RAW CAP_SYSLOG
 MountAPIVFS=yes
+# NoNewPrivileges precisa ser 'no' para permitir sg funcionar
 NoNewPrivileges=no
 PrivateMounts=yes
-#PrivateDevices=yes
 PrivateTmp=yes
-#MemoryDenyWriteExecute=yes
-#ProtectSystem=full
 ProtectHome=yes
 ProtectHostname=yes
-#ProtectClock=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectKernelLogs=yes
@@ -49,7 +41,6 @@ ProtectControlGroups=yes
 LockPersonality=yes
 RestrictRealtime=yes
 RestrictNamespaces=yes
-#RestrictSUIDSGID=yes
 Restart=on-failure
 RestartSec=30s
 
