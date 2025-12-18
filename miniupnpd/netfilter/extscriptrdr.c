@@ -18,6 +18,7 @@
 #include "../config.h"
 #include "../upnpglobalvars.h"
 #include "extscriptrdr.h"
+#include "rdr_desc.h"  /* for add_redirect_desc() and del_redirect_desc() */
 
 extern char **environ;
 
@@ -46,6 +47,10 @@ proto_itoa(int proto)
 static int execute_external_script(const char *operation, const char **args, int arg_count) {
 	pid_t pid;
 	int status;
+	char **argv;
+	int i;
+	posix_spawn_file_actions_t file_actions;
+	int spawn_result;
 	
 	if (!external_script_path || strlen(external_script_path) == 0) {
 		syslog(LOG_ERR, "external script path not configured");
@@ -59,7 +64,7 @@ static int execute_external_script(const char *operation, const char **args, int
 	}
 	
 	/* Build argv array */
-	char **argv = malloc(sizeof(char*) * (arg_count + 5));
+	argv = malloc(sizeof(char*) * (arg_count + 5));
 	if (!argv) {
 		syslog(LOG_ERR, "malloc failed for external script argv");
 		return -1;
@@ -69,18 +74,17 @@ static int execute_external_script(const char *operation, const char **args, int
 	argv[1] = "-e";  /* Exit on error */
 	argv[2] = (char*)external_script_path;
 	argv[3] = (char*)operation;
-	for (int i = 0; i < arg_count; i++) {
+	for (i = 0; i < arg_count; i++) {
 		argv[i + 4] = (char*)args[i];
 	}
 	argv[arg_count + 4] = NULL;
 	
 	/* Set up file actions to redirect stdin to /dev/null */
-	posix_spawn_file_actions_t file_actions;
 	posix_spawn_file_actions_init(&file_actions);
 	posix_spawn_file_actions_addopen(&file_actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0);
 	
 	/* Use posix_spawn instead of fork+exec */
-	int spawn_result = posix_spawn(&pid, "/bin/bash", &file_actions, NULL, argv, environ);
+	spawn_result = posix_spawn(&pid, "/bin/bash", &file_actions, NULL, argv, environ);
 	
 	posix_spawn_file_actions_destroy(&file_actions);
 	free(argv);
@@ -227,6 +231,7 @@ ext_delete_redirect_and_filter_rules(unsigned short eport, int proto)
 	char eport_str[6];
 	const char * args[2];
 	int arg_count = 0;
+	int result;
 
 	snprintf(eport_str, sizeof(eport_str), "%hu", eport);
 
@@ -236,5 +241,12 @@ ext_delete_redirect_and_filter_rules(unsigned short eport, int proto)
 	syslog(LOG_INFO, "ext_delete_redirect_and_filter_rules: %s :%s",
 	       proto_itoa(proto), eport_str);
 
-	return execute_external_script("delete_redirect_and_filter", args, arg_count);
+	result = execute_external_script("delete_redirect_and_filter", args, arg_count);
+	
+	/* Remove from internal tracking list (for UPnP queries) */
+	if (result == 0) {
+		del_redirect_desc(eport, proto);
+	}
+	
+	return result;
 }
