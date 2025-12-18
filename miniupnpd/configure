@@ -1143,11 +1143,6 @@ echo "#endif /* ${CONFIGMACRO} */" >> ${CONFIGFILE}
 ${MV} ${CONFIGFILE} ${CONFIGFILE_FINAL}
 if [ -f "${CONFIG_MK}" ] && [ -n "${CONFIG_MK_FINAL}" ] ; then
 	${MV} ${CONFIG_MK} ${CONFIG_MK_FINAL}
-	# Add include directive for the selected Makefile
-	if [ -n "${MAKEFILE}" ] ; then
-		echo "" >> ${CONFIG_MK_FINAL}
-		echo "include \$(SRCDIR)/${MAKEFILE}" >> ${CONFIG_MK_FINAL}
-	fi
 fi
 
 exit 0
