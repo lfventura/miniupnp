@@ -96,7 +96,7 @@ clean:
 	$(RM) validateversion
 	$(RM) -r dox/
 
-install:	miniupnpd $(SRCDIR)/miniupnpd.8 $(SRCDIR)/miniupnpd.conf genuuid
+install:	miniupnpd $(SRCDIR)/miniupnpd.8
 	$(STRIP) miniupnpd
 	$(INSTALL) -D -m 0755 miniupnpd -t $(DESTDIR)$(SBINDIR)
 	$(INSTALL) -D -m 0755 $(NFT_SCRIPTS) -t $(DESTDIR)$(CONFIGDIR)
