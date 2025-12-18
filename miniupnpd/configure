@@ -733,7 +733,7 @@ case $FW in
 		;;
 esac
 
-if [ "$MAKEFILE" = "Makefile.linux" ] || [ "$MAKEFILE" = "Makefile.linux_nft" ] || [ "$MAKEFILE" = "Makefile.macosx" ] ; then
+if [ "$MAKEFILE" = "Makefile.linux" ] || [ "$MAKEFILE" = "Makefile.linux_nft" ] || [ "$MAKEFILE" = "Makefile.linux_script" ] || [ "$MAKEFILE" = "Makefile.macosx" ] ; then
 	DEFAULT_CONFIG=/etc/miniupnpd/miniupnpd.conf
 else
 	DEFAULT_CONFIG=/etc/miniupnpd.conf
