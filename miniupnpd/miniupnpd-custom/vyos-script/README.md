@@ -84,6 +84,9 @@ ExecStart=
 ExecStart=/usr/sbin/miniupnpd -v -f /etc/miniupnpd/miniupnpd.conf
 ```
 
+Note that depending on your systemd the echos in the log may not show on journalctl...
+If you need to debug if better one way is to use -d instead of -v and use Type=simple
+
 **Direct execution:**
 ```bash
 miniupnpd -vv -f /etc/miniupnpd/miniupnpd.conf
