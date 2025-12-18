@@ -6,22 +6,30 @@ Fork repository: https://github.com/lfventura/miniupnp
 
 **Additional Features in This Fork:**
 - External Script Support for firewall operations (Linux only)
-- Completely bypass iptables/nftables and delegate to custom scripts, when enabled
+- Completely bypass iptables/nftables and delegate to custom scripts
 - Full control over port forwarding and filtering rules
+- Separate build system for easy upstream merging
 
-**Limitations:**
-- External script feature is Linux-only (requires USE_NETFILTER)
-- Only available when compiled with --firewall=nftables
-- Script execution is synchronous (should be fast)
+**Build Options:**
+- Standard mode: `./configure --firewall=nftables` (unchanged from upstream)
+- Script mode: `./configure --firewall=script` (new feature)
+
+**Architecture:**
+- Uses `Makefile.linux_script` for script mode (separate from upstream Makefile.linux_nft)
+- All script code isolated with `#ifdef USE_EXTERNAL_SCRIPT`
+- No nftables dependencies when built in script mode
+- Internal tracking (`rdr_desc_list`) for efficient UPnP queries
 
 **Documentation:**
-- External Script Feature: See EXTERNAL_SCRIPT_README.md
-- Example Script: See miniupnpd-firewall-script-example.sh
-- Build Instructions: See build.sh for .deb package creation
+- External Script Feature: See `EXTERNAL_SCRIPT_README.md`
+- Example Script: See `miniupnpd-firewall-script-example.sh`
 
-**Objective:**
+**VyOS UPNP (It is dirty, but it works):**
+- See `../vyos-script`
+
+**Use Case:**
 Enable custom firewall management systems to integrate with UPnP IGD
-without direct iptables/nftables manipulation. This is being used to add UPNP to VyOS 1.5.
+without direct iptables/nftables manipulation. Currently used to add UPnP to VyOS 1.5.
 
 ====================
 

@@ -8,35 +8,55 @@ This feature allows you to completely disable miniupnpd's direct manipulation of
 - You want full control over firewall rule implementation
 - You need to integrate with third-party firewall solutions
 - You want to add custom logging or validation logic
+- This customization was made to be able to actually have UPNP on Vyos (Tested on Vyos 1.5Q2)
+
+## Architecture
+
+The external script support is **completely isolated** from the standard miniupnpd codebase:
+
+- **Separate build system**: Uses `Makefile.linux_script` instead of `Makefile.linux_nft`
+- **Separate compilation flag**: `USE_EXTERNAL_SCRIPT` isolates all script-related code
+- **No nftables dependencies**: Script mode doesn't link against libnftnl or libmnl
+- **Easy upstream merging**: Original code remains unchanged, minimizing merge conflicts
 
 ## Building and Installation
 
+### Build Options
+
+miniupnpd now supports a new separate firewall backends on Linux:
+
+1. **External script mode** (new): `./configure --firewall=script`
+
 ### Prerequisites
-- Linux system with nftables support
+- Linux system
 - Build tools: gcc, make
-- Debian packaging tools (for .deb creation): dpkg-deb
+- For packaging: dpkg-deb (Debian) or appropriate tools for your distro
+- Check build.sh for a real world example on it
 
 ### Build Instructions
 
-1. **Configure and compile:**
-   ```bash
-   make clean
-   ./configure --firewall=nftables && make
-   ```
+#### Option 1: External Script Mode (Custom Firewall)
 
-2. **Create Debian package (optional):**
-   ```bash
-   ./build.sh
-   ```
-   This will:
-   - Clean and compile with nftables support
-   - Copy the binary to the package structure
-   - Create `miniupnpd-custom.deb`
+```bash
+./configure --firewall=script
+make clean
+make -j$(nproc)
+```
 
-3. **Install the package:**
-   ```bash
-   sudo dpkg -i miniupnpd-custom.deb
-   ```
+This will:
+- Use `Makefile.linux_script`
+- Define `USE_EXTERNAL_SCRIPT` 
+- Link with `netfilter/extscriptrdr.o`, `netfilter/rdr_desc.o`, `netfilter/noop_rdr.o`
+- **NOT** link with nftables libraries
+
+### Installation
+
+```bash
+sudo make install
+```
+
+Or create a package for your distribution.
+Check the draft at build.sh file.
 
 ## Configuration
 
@@ -257,10 +277,21 @@ tail -f /var/log/syslog | grep miniupnpd
 
 ## Limitations
 
-- This feature is **Linux-only** (USE_NETFILTER must be enabled at compile time)
+- This feature is **Linux-only**
 - The script is called **synchronously**, so it should execute quickly
-- **No query operations** are supported yet (like listing existing rules)
+- **Query operations use internal tracking**: Port mappings are tracked in memory (rdr_desc_list)
 - The interface is **forward-compatible** but may be extended in future versions
+
+## How It Works Internally
+
+When `USE_EXTERNAL_SCRIPT` is defined:
+
+1. **Rule creation**: Calls external script AND stores mapping in internal list (`rdr_desc_list`)
+2. **Rule queries**: Returns data from internal list (no script calls)
+3. **Rule deletion**: Calls external script AND removes from internal list
+4. **Stub functions**: Unused firewall functions in `netfilter/noop_rdr.c` return errors
+
+This hybrid approach allows UPnP queries to work efficiently without calling the script for every read operation.
 
 ## Performance
 
@@ -278,3 +309,46 @@ Each port mapping operation requires executing an external process. For high-vol
 3. **Advanced validation**: Implement business-specific port mapping policies
 4. **Multi-firewall management**: Update multiple firewall systems simultaneously
 5. **Cloud integration**: Update cloud provider security groups via API
+6. **VyOS integration**: Use VyOS script-template for firewall management. If interested, check the folder ../vyos-script
+
+## Code Structure (For Developers)
+
+### New Files (100% custom)
+- `netfilter/extscriptrdr.c/h`: External script execution via posix_spawn()
+- `netfilter/rdr_desc.c/h`: Internal tracking list (add/get/delete operations)
+- `netfilter/noop_rdr.c`: Stub implementations for unused firewall functions
+- `Makefile.linux_script`: Separate build configuration for script mode
+- `EXTERNAL_SCRIPT_README.md`: This documentation
+- `miniupnpd-firewall-script-example.sh`: Example script template
+
+### Modified Files (with #ifdef USE_EXTERNAL_SCRIPT)
+- `upnpredirect.c`: Add/get/delete operations wrapped in conditionals
+- `upnpglobalvars.h/c`: Script configuration variables
+- `options.h/c`: Script configuration parsing
+- `configure`: Added `--firewall=script` option
+
+### Unchanged Files (pristine upstream)
+- `Makefile.linux_nft`: Original nftables build (unmodified)
+- All other core miniupnpd files
+
+### Internal Tracking Structure
+
+```c
+struct rdr_desc {
+    unsigned short eport;
+    unsigned short iport;
+    char iaddr[16];  // IPv4 or IPv6
+    int proto;       // IPPROTO_TCP or IPPROTO_UDP
+    char desc[64];
+    unsigned int timestamp;
+    struct rdr_desc *next;
+};
+```
+
+Operations:
+- `add_redirect_desc()`: Called after successful external script execution
+- `get_redirect_rule_from_desc_list()`: Query by eport/proto
+- `get_redirect_rule_by_index_from_desc_list()`: Query by index (for listing)
+- `del_redirect_desc()`: Called after successful deletion
+
+This ensures UPnP clients can query port mappings efficiently without calling the external script.

@@ -10,6 +10,9 @@ apt-get install libcap-ng-dev
 apt-get install libnftnl-dev libmnl-dev
 apt-get install libnetfilter-conntrack-dev
 make clean
-./configure --firewall=nftables && make
+./configure --firewall=script --igd2 --leasefile --vendorcfg
+make
+# The directory miniupnpd-custom is pre-propulated with all the archives that are needed for the miniupnpd
+# Just put the newly built binary in the right place and build the .deb package
 cp miniupnpd miniupnpd-custom/usr/sbin/
 dpkg-deb --build miniupnpd-custom
