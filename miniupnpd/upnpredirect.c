@@ -28,7 +28,10 @@
 #include "upnputils.h"
 #if defined(USE_NETFILTER)
 #include "netfilter/iptcrdr.h"
+#ifdef USE_EXTERNAL_SCRIPT
 #include "netfilter/extscriptrdr.h"
+#include "netfilter/rdr_desc.h"
+#endif
 #endif
 #if defined(USE_PF)
 #include "pf/obsdrdr.h"
@@ -412,6 +415,7 @@ upnp_redirect_internal(const char * rhost, unsigned short eport,
 		return -1;
 
 #if defined(USE_NETFILTER)
+#ifdef USE_EXTERNAL_SCRIPT
 	/* Use external script if configured */
 	if(use_external_script) {
 		r_redir = ext_add_redirect_rule2(ext_if_name, rhost, eport, iaddr, iport, proto,
@@ -419,6 +423,9 @@ upnp_redirect_internal(const char * rhost, unsigned short eport,
 		if(r_redir < 0) {
 			return -1;
 		}
+
+		/* Add internal tracking for UPnP queries (GetSpecificPortMappingEntry, etc) */
+		add_redirect_desc(eport, proto, iaddr, iport, desc, timestamp);
 
 #ifdef ENABLE_LEASEFILE
 		lease_file_add( eport, iaddr, iport, proto, desc, timestamp);
@@ -428,9 +435,12 @@ upnp_redirect_internal(const char * rhost, unsigned short eport,
 		if(r_filter < 0) {
 			/* clean up the redirect rule */
 			ext_delete_redirect_rule(ext_if_name, eport, proto);
+			del_redirect_desc(eport, proto);
 			return -1;
 		}
-	} else {
+	} else
+#endif /* USE_EXTERNAL_SCRIPT */
+	{
 		/* Use standard iptables/nftables */
 		r_redir = add_redirect_rule2(ext_if_name, rhost, eport, iaddr, iport, proto,
 		                              desc, timestamp);
@@ -503,10 +513,24 @@ upnp_get_redirection_infos(unsigned short eport, const char * protocol,
 		desc[0] = '\0';
 	if(rhost && (rhostlen > 0))
 		rhost[0] = '\0';
-	r = get_redirect_rule(ext_if_name, eport, proto_atoi(protocol),
-	                      iaddr, iaddrlen, iport, desc, desclen,
-	                      rhost, rhostlen, &timestamp,
-	                      0, 0);
+	
+#if defined(USE_NETFILTER)
+#ifdef USE_EXTERNAL_SCRIPT
+	/* When using external script, query from internal tracking list only */
+	if(use_external_script) {
+		r = get_redirect_rule_from_desc_list(eport, proto_atoi(protocol),
+		                                       iaddr, iaddrlen, iport,
+		                                       desc, desclen, &timestamp);
+	} else
+#endif /* USE_EXTERNAL_SCRIPT */
+#endif /* USE_NETFILTER */
+	{
+		r = get_redirect_rule(ext_if_name, eport, proto_atoi(protocol),
+		                      iaddr, iaddrlen, iport, desc, desclen,
+		                      rhost, rhostlen, &timestamp,
+		                      0, 0);
+	}
+	
 	if(r == 0 &&
 	   timestamp > 0 &&
 	   timestamp > (unsigned int)(current_time = upnp_time())) {
@@ -535,27 +559,39 @@ upnp_get_redirection_infos_by_index(int index,
 		desc[0] = '\0';
 	if(rhost && (rhostlen > 0))
 		rhost[0] = '\0';
-	if(get_redirect_rule_by_index(index, 0/*ifname*/, eport, iaddr, iaddrlen,
-	                              iport, &proto, desc, desclen,
-	                              rhost, rhostlen, &timestamp,
-	                              0, 0) < 0)
-		return -1;
-	else
+	
+#if defined(USE_NETFILTER)
+#ifdef USE_EXTERNAL_SCRIPT
+	/* When using external script, query from internal tracking list only */
+	if(use_external_script) {
+		if(get_redirect_rule_by_index_from_desc_list(index, eport, &proto,
+		                                               iaddr, iaddrlen, iport,
+		                                               desc, desclen, &timestamp) < 0)
+			return -1;
+	} else
+#endif /* USE_EXTERNAL_SCRIPT */
+#endif /* USE_NETFILTER */
 	{
-		current_time = upnp_time();
-		*leaseduration = (timestamp > (unsigned int)current_time)
-		                 ? (timestamp - current_time)
-		                 : 0;
-		if(proto == IPPROTO_TCP)
-			memcpy(protocol, "TCP", 4);
-#ifdef IPPROTO_UDPLITE
-		else if(proto == IPPROTO_UDPLITE)
-			memcpy(protocol, "UDPLITE", 8);
-#endif /* IPPROTO_UDPLITE */
-		else
-			memcpy(protocol, "UDP", 4);
-		return 0;
+		if(get_redirect_rule_by_index(index, 0/*ifname*/, eport, iaddr, iaddrlen,
+		                              iport, &proto, desc, desclen,
+		                              rhost, rhostlen, &timestamp,
+		                              0, 0) < 0)
+			return -1;
 	}
+	
+	current_time = upnp_time();
+	*leaseduration = (timestamp > (unsigned int)current_time)
+	                 ? (timestamp - current_time)
+	                 : 0;
+	if(proto == IPPROTO_TCP)
+		memcpy(protocol, "TCP", 4);
+#ifdef IPPROTO_UDPLITE
+	else if(proto == IPPROTO_UDPLITE)
+		memcpy(protocol, "UDPLITE", 8);
+#endif /* IPPROTO_UDPLITE */
+	else
+		memcpy(protocol, "UDP", 4);
+	return 0;
 }
 
 /* called from natpmp.c too */
@@ -564,30 +600,27 @@ _upnp_delete_redir(unsigned short eport, int proto)
 {
 	int r;
 #if defined(__linux__)
-	#ifdef USE_NETFILTER
+	#if defined(USE_NETFILTER) && defined(USE_EXTERNAL_SCRIPT)
 	if(use_external_script) {
 		r = ext_delete_redirect_and_filter_rules(eport, proto);
-	} else {
+	} else
+	#endif
+	{
 		r = delete_redirect_and_filter_rules(eport, proto);
 	}
-	#else
-	r = delete_redirect_and_filter_rules(eport, proto);
-	#endif
 #elif defined(USE_PF)
 	r = delete_redirect_and_filter_rules(ext_if_name, eport, proto);
 #else
-	#ifdef USE_NETFILTER
+	#if defined(USE_NETFILTER) && defined(USE_EXTERNAL_SCRIPT)
 	if(use_external_script) {
 		r = ext_delete_redirect_rule(ext_if_name, eport, proto);
 		ext_delete_filter_rule(ext_if_name, eport, proto);
-	} else {
+	} else
+	#endif
+	{
 		r = delete_redirect_rule(ext_if_name, eport, proto);
 		delete_filter_rule(ext_if_name, eport, proto);
 	}
-	#else
-	r = delete_redirect_rule(ext_if_name, eport, proto);
-	delete_filter_rule(ext_if_name, eport, proto);
-	#endif
 #endif
 #ifdef ENABLE_LEASEFILE
 	lease_file_remove( eport, proto);

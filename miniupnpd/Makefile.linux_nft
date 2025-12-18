@@ -65,7 +65,9 @@ include $(SRCDIR)/gitrev.mk
 include $(SRCDIR)/objects.mk
 
 # sources in the netfilter_nft/ directory
-NETFILTEROBJS = nftnlrdr.o nftpinhole.o nfct_get.o nftnlrdr_misc.o netfilter/extscriptrdr.o
+NETFILTEROBJS = nftnlrdr.o nftpinhole.o nfct_get.o nftnlrdr_misc.o
+# External script support objects (only used if USE_EXTERNAL_SCRIPT is defined in config.h)
+NETFILTEROBJS += netfilter/rdr_desc.o netfilter/extscriptrdr.o
 
 ALLOBJS = $(BASEOBJS) $(LNXOBJS) $(NETFILTEROBJS) $(OTHEROBJS)
 

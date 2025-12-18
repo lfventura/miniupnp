@@ -112,7 +112,7 @@ const char * queue = 0;
 const char * tag = 0;
 #endif
 
-#ifdef USE_NETFILTER
+#if defined(USE_NETFILTER) && defined(USE_EXTERNAL_SCRIPT)
 /* external script support */
 int use_external_script = 0;
 const char * external_script_path = 0;

@@ -27,6 +27,8 @@
 #define USE_IFACEWATCHER 1
 #define USE_NETFILTER 1
 #define USE_NFTABLES  1
+/* External script support for custom firewall management */
+#define USE_EXTERNAL_SCRIPT 1
 #define HAS_LIBCAP_NG
 #define LIB_UUID
 #define SUPPORT_REMOTEHOST

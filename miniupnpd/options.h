@@ -89,7 +89,7 @@ enum upnpconfigoptions {
 	UPNPFORCEIGDDESCV1,		/*!< force_igd_desc_v1 */
 #endif
 	UPNPENABLE,				/*!< enable_upnp */
-#ifdef USE_NETFILTER
+#if defined(USE_NETFILTER) && defined(USE_EXTERNAL_SCRIPT)
 	UPNPUSEEXTERNALSCRIPT,		/*!< use_external_script */
 	UPNPEXTERNALSCRIPTPATH		/*!< external_script_path */
 #endif
