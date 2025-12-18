@@ -118,9 +118,16 @@ endif
 	gzip -f $(DESTDIR)$(MANDIR)/man8/miniupnpd.8
 
 genuuid:
-	$(MV) $(SRCDIR)/miniupnpd.conf $(SRCDIR)/miniupnpd.conf.before
-	sed -e "s/^uuid=[-0-9a-fA-F]*/uuid=`$(UUIDBIN) 2>/dev/null`/" $(SRCDIR)/miniupnpd.conf.before > $(SRCDIR)/miniupnpd.conf
-	$(RM) $(SRCDIR)/miniupnpd.conf.before
+	@if [ -f miniupnpd.conf ]; then \
+		mv miniupnpd.conf miniupnpd.conf.before; \
+		sed -e "s/^uuid=[-0-9a-fA-F]*/uuid=`$(UUIDBIN) 2>/dev/null`/" miniupnpd.conf.before > miniupnpd.conf; \
+		rm -f miniupnpd.conf.before; \
+	elif [ -f $(SRCDIR)/miniupnpd.conf ]; then \
+		mv $(SRCDIR)/miniupnpd.conf $(SRCDIR)/miniupnpd.conf.before; \
+		sed -e "s/^uuid=[-0-9a-fA-F]*/uuid=`$(UUIDBIN) 2>/dev/null`/" $(SRCDIR)/miniupnpd.conf.before > $(SRCDIR)/miniupnpd.conf; \
+		rm -f $(SRCDIR)/miniupnpd.conf.before; \
+	fi
+
 
 include $(SRCDIR)/check.mk
 
