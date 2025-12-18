@@ -106,7 +106,7 @@ static const struct {
 #endif
 	{ UPNPMINISSDPDSOCKET, "minissdpdsocket"},
 	{ UPNPSECUREMODE, "secure_mode"},
-#ifdef USE_NETFILTER
+#if defined(USE_NETFILTER) && defined(USE_EXTERNAL_SCRIPT)
 	{ UPNPUSEEXTERNALSCRIPT, "use_external_script"},
 	{ UPNPEXTERNALSCRIPTPATH, "external_script_path"},
 #endif

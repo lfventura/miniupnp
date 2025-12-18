@@ -28,6 +28,7 @@
 #include "upnputils.h"
 #if defined(USE_NETFILTER)
 #include "netfilter/iptcrdr.h"
+#ifdef USE_EXTERNAL_SCRIPT
 #include "netfilter/extscriptrdr.h"
 #include "netfilter/rdr_desc.h"
 #endif
@@ -413,6 +414,7 @@ upnp_redirect_internal(const char * rhost, unsigned short eport,
 		return -1;
 
 #if defined(USE_NETFILTER)
+#ifdef USE_EXTERNAL_SCRIPT
 	/* Use external script if configured */
 	if(use_external_script) {
 		r_redir = ext_add_redirect_rule2(ext_if_name, rhost, eport, iaddr, iport, proto,
@@ -435,7 +437,9 @@ upnp_redirect_internal(const char * rhost, unsigned short eport,
 			del_redirect_desc(eport, proto);
 			return -1;
 		}
-	} else {
+	} else
+#endif /* USE_EXTERNAL_SCRIPT */
+	{
 		/* Use standard iptables/nftables */
 		r_redir = add_redirect_rule2(ext_if_name, rhost, eport, iaddr, iport, proto,
 		                              desc, timestamp);
@@ -593,30 +597,27 @@ _upnp_delete_redir(unsigned short eport, int proto)
 {
 	int r;
 #if defined(__linux__)
-	#ifdef USE_NETFILTER
+	#if defined(USE_NETFILTER) && defined(USE_EXTERNAL_SCRIPT)
 	if(use_external_script) {
 		r = ext_delete_redirect_and_filter_rules(eport, proto);
-	} else {
+	} else
+	#endif
+	{
 		r = delete_redirect_and_filter_rules(eport, proto);
 	}
-	#else
-	r = delete_redirect_and_filter_rules(eport, proto);
-	#endif
 #elif defined(USE_PF)
 	r = delete_redirect_and_filter_rules(ext_if_name, eport, proto);
 #else
-	#ifdef USE_NETFILTER
+	#if defined(USE_NETFILTER) && defined(USE_EXTERNAL_SCRIPT)
 	if(use_external_script) {
 		r = ext_delete_redirect_rule(ext_if_name, eport, proto);
 		ext_delete_filter_rule(ext_if_name, eport, proto);
-	} else {
+	} else
+	#endif
+	{
 		r = delete_redirect_rule(ext_if_name, eport, proto);
 		delete_filter_rule(ext_if_name, eport, proto);
 	}
-	#else
-	r = delete_redirect_rule(ext_if_name, eport, proto);
-	delete_filter_rule(ext_if_name, eport, proto);
-	#endif
 #endif
 #ifdef ENABLE_LEASEFILE
 	lease_file_remove( eport, proto);

@@ -165,7 +165,7 @@ extern const char * queue;
 extern const char * tag;
 #endif
 
-#ifdef USE_NETFILTER
+#if defined(USE_NETFILTER) && defined(USE_EXTERNAL_SCRIPT)
 /* external script support */
 extern int use_external_script;
 extern const char * external_script_path;
