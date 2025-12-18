@@ -70,8 +70,6 @@ NETFILTEROBJS = netfilter/rdr_desc.o netfilter/extscriptrdr.o netfilter/noop_rdr
 
 ALLOBJS = $(BASEOBJS) $(LNXOBJS) $(NETFILTEROBJS) $(OTHEROBJS)
 
-# No firewall scripts needed - external script is user-provided
-
 #LDLIBS += -lnfnetlink
 
 EXECUTABLES = miniupnpd miniupnpdctl
@@ -99,7 +97,6 @@ clean:
 install:	miniupnpd $(SRCDIR)/miniupnpd.8
 	$(STRIP) miniupnpd
 	$(INSTALL) -D -m 0755 miniupnpd -t $(DESTDIR)$(SBINDIR)
-	$(INSTALL) -D -m 0755 $(NFT_SCRIPTS) -t $(DESTDIR)$(CONFIGDIR)
 	$(INSTALL) -D -m 0644 -b $(SRCDIR)/miniupnpd.conf -t $(DESTDIR)$(CONFIGDIR)
 	sed -i -e "s/^uuid=[-0-9a-f]*/uuid=$(shell $(UUIDBIN))/" $(DESTDIR)$(CONFIGDIR)/miniupnpd.conf
 ifneq ($(USE_SYSTEMD),)
