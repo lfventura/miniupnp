@@ -19,8 +19,8 @@
 #
 #
 CONFIG_OPTIONS ?= $(shell cat .configure.cache)
-ifeq ($(filter --firewall=nftables,$(CONFIG_OPTIONS)),)
-CONFIG_OPTIONS += --firewall=nftables
+ifeq ($(filter --firewall=script,$(CONFIG_OPTIONS)),)
+CONFIG_OPTIONS += --firewall=script
 endif
 
 # Make sucks, prove me wrong
@@ -29,6 +29,7 @@ ifeq ($(filter -D_FORTIFY_SOURCE=% -Wp$(,)-D_FORTIFY_SOURCE=%,$(CPPFLAGS) $(CFLA
 CPPFLAGS += -D_FORTIFY_SOURCE=2
 endif
 CPPFLAGS += -D_GNU_SOURCE
+CPPFLAGS += -DUSE_EXTERNAL_SCRIPT
 
 #CFLAGS = -O -g #-DDEBUG
 CFLAGS ?= -Os
@@ -64,13 +65,12 @@ include config.mk
 include $(SRCDIR)/gitrev.mk
 include $(SRCDIR)/objects.mk
 
-# sources in the netfilter_nft/ directory
-NETFILTEROBJS = nftnlrdr.o nftpinhole.o nfct_get.o nftnlrdr_misc.o
+# sources for external script support (no nftables/iptables)
+NETFILTEROBJS = netfilter/rdr_desc.o netfilter/extscriptrdr.o netfilter/noop_rdr.o
 
 ALLOBJS = $(BASEOBJS) $(LNXOBJS) $(NETFILTEROBJS) $(OTHEROBJS)
 
-NFT_SCRIPTS = $(addprefix $(SRCDIR)/netfilter_nft/scripts/, \
-	nft_init.sh nft_removeall.sh nft_flush.sh nft_delete_chain.sh)
+# No firewall scripts needed - external script is user-provided
 
 #LDLIBS += -lnfnetlink
 
@@ -96,10 +96,7 @@ clean:
 	$(RM) validateversion
 	$(RM) -r dox/
 
-install:	miniupnpd $(SRCDIR)/miniupnpd.8 $(SRCDIR)/miniupnpd.conf \
-		$(NFT_SCRIPTS) \
-		$(SRCDIR)/linux/miniupnpd.init.d.script \
-		$(SRCDIR)/linux/miniupnpd.iptables.service
+install:	miniupnpd $(SRCDIR)/miniupnpd.8 $(SRCDIR)/miniupnpd.conf genuuid
 	$(STRIP) miniupnpd
 	$(INSTALL) -D -m 0755 miniupnpd -t $(DESTDIR)$(SBINDIR)
 	$(INSTALL) -D -m 0755 $(NFT_SCRIPTS) -t $(DESTDIR)$(CONFIGDIR)
@@ -125,12 +122,11 @@ include $(SRCDIR)/check.mk
 include $(SRCDIR)/common.mk
 
 testportinuse:	testportinuse.o portinuse.o getifaddr.o \
-	upnputils.o getroute.o \
-	nftnlrdr.o nftnlrdr_misc.o
+	upnputils.o getroute.o
 
 teststun: teststun.o upnpstun.o \
 	upnputils.o getroute.o \
-	nftnlrdr.o nftnlrdr_misc.o
+	netfilter/noop_rdr.o netfilter/rdr_desc.o
 
 config.mk config.h:	$(SRCDIR)/configure $(SRCDIR)/VERSION
 	$(SHELL) $< $(CONFIG_OPTIONS)
@@ -144,9 +140,12 @@ config.mk config.h:	$(SRCDIR)/configure $(SRCDIR)/VERSION
 %.o:	$(SRCDIR)/netfilter_nft/%.c $(DEPDIR)/%.d | $(DEPDIR)
 	$(CC) -c $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $< -o $@
 
+netfilter/%.o:	$(SRCDIR)/netfilter/%.c $(DEPDIR)/netfilter/%.d | $(DEPDIR)/netfilter
+	$(CC) -c $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $< -o $@
 
 DEPFILES := $(ALLOBJS:%.o=$(DEPDIR)/%.d)
 $(DEPDIR): ; @mkdir -p $@
+$(DEPDIR)/netfilter: ; @mkdir -p $@
 $(DEPFILES):
 
 -include $(wildcard $(DEPFILES))
