@@ -769,12 +769,15 @@ fi
 # libcap variants
 case $OS_FAMILY in
 	Linux)
-		if [ "$PKG_CONFIG" ] ; then
+		# Skip libcap for script mode - not needed for external script execution
+		if [ "$FW" != "script" ] && [ "$PKG_CONFIG" ] ; then
 			if pkg_detect libcap-ng; then
 				echo "#define HAS_LIBCAP_NG" >> ${CONFIGFILE}
 			elif pkg_detect libcap; then
 				echo "#define HAS_LIBCAP" >> ${CONFIGFILE}
 			fi
+		elif [ "$FW" = "script" ] ; then
+			echo "# libcap/libcap-ng skipped for external script mode" >> ${CONFIG_MK}
 		else
 			echo "WARNING: no pkg-config, cannot detect libcap/libcap-ng"
 		fi
