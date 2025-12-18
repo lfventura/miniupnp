@@ -75,7 +75,7 @@ int get_redirect_rule_by_index(int index,
                                unsigned int * timestamp,
                                u_int64_t * packets, u_int64_t * bytes)
 {
-	(void)ifname; (void)rhostlen; (void)packets; (void)bytes;
+	(void)ifname; (void)rhost; (void)rhostlen; (void)packets; (void)bytes;
 	/* Use internal tracking list */
 	return get_redirect_rule_by_index_from_desc_list(index, eport, proto,
 	                                                  iaddr, iaddrlen, iport,
