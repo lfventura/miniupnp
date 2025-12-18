@@ -2373,6 +2373,9 @@ main(int argc, char * * argv)
 #ifdef IGD_V2
 				" igdv2"
 #endif
+#ifdef USE_EXTERNAL_SCRIPT
+				" external-script"
+#endif
 			);
 			return 0;
 		}

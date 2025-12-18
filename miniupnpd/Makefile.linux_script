@@ -117,6 +117,11 @@ endif
 	$(INSTALL) -D -m 0644 $(SRCDIR)/miniupnpd.8 -t $(DESTDIR)$(MANDIR)/man8
 	gzip -f $(DESTDIR)$(MANDIR)/man8/miniupnpd.8
 
+genuuid:
+	$(MV) $(SRCDIR)/miniupnpd.conf $(SRCDIR)/miniupnpd.conf.before
+	sed -e "s/^uuid=[-0-9a-fA-F]*/uuid=`$(UUIDBIN) 2>/dev/null`/" $(SRCDIR)/miniupnpd.conf.before > $(SRCDIR)/miniupnpd.conf
+	$(RM) $(SRCDIR)/miniupnpd.conf.before
+
 include $(SRCDIR)/check.mk
 
 include $(SRCDIR)/common.mk
