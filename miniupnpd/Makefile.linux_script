@@ -125,7 +125,8 @@ testportinuse:	testportinuse.o portinuse.o getifaddr.o \
 	upnputils.o getroute.o
 
 teststun: teststun.o upnpstun.o \
-	upnputils.o getroute.o
+	upnputils.o getroute.o \
+	netfilter/noop_rdr.o
 
 config.mk config.h:	$(SRCDIR)/configure $(SRCDIR)/VERSION
 	$(SHELL) $< $(CONFIG_OPTIONS)
