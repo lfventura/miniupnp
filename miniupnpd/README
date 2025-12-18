@@ -25,7 +25,7 @@ Fork repository: https://github.com/lfventura/miniupnp
 - Example Script: See `miniupnpd-firewall-script-example.sh`
 
 **VyOS UPNP (It is dirty, but it works):**
-- See `../vyos-script`
+- See `miniupnpd-custom/vyos-script/`
 
 **Use Case:**
 Enable custom firewall management systems to integrate with UPnP IGD

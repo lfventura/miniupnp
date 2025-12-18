@@ -309,7 +309,7 @@ Each port mapping operation requires executing an external process. For high-vol
 3. **Advanced validation**: Implement business-specific port mapping policies
 4. **Multi-firewall management**: Update multiple firewall systems simultaneously
 5. **Cloud integration**: Update cloud provider security groups via API
-6. **VyOS integration**: Use VyOS script-template for firewall management. If interested, check the folder ../vyos-script
+6. **VyOS integration**: Use VyOS script-template for firewall management. If interested, check the folder miniupnpd-custom/vyos-script/
 
 ## Code Structure (For Developers)
 
