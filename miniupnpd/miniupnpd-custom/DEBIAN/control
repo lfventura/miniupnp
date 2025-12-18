@@ -1,6 +1,7 @@
 Package: miniupnpd
 Version: 2.3.9-script2
 Architecture: all
+Maintainer: Lfventura on almost no spare time
 Depends: debconf, lsb-base, uuid-runtime, debconf (>= 0.5) | debconf-2.0, init-system-helpers (>= 1.51)
 Section: net
 Priority: optional
