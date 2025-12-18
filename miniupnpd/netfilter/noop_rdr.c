@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include "../config.h"
+#include "rdr_desc.h"
 
 /* Stub functions - these should not be called when using external script */
 
@@ -59,11 +60,11 @@ int get_redirect_rule(const char * ifname, unsigned short eport, int proto,
                      unsigned int * timestamp,
                      u_int64_t * packets, u_int64_t * bytes)
 {
-	(void)ifname; (void)eport; (void)proto; (void)iaddr; (void)iaddrlen;
-	(void)iport; (void)desc; (void)desclen; (void)rhost; (void)rhostlen;
-	(void)timestamp; (void)packets; (void)bytes;
-	syslog(LOG_ERR, "get_redirect_rule() called but should not be used with external script");
-	return -1;
+	(void)ifname; (void)rhost; (void)rhostlen; (void)packets; (void)bytes;
+	/* Use internal tracking list */
+	return get_redirect_rule_from_desc_list(eport, proto,
+	                                         iaddr, iaddrlen, iport,
+	                                         desc, desclen, timestamp);
 }
 
 int get_redirect_rule_by_index(int index,
@@ -74,11 +75,11 @@ int get_redirect_rule_by_index(int index,
                                unsigned int * timestamp,
                                u_int64_t * packets, u_int64_t * bytes)
 {
-	(void)index; (void)ifname; (void)eport; (void)iaddr; (void)iaddrlen;
-	(void)iport; (void)proto; (void)desc; (void)desclen; (void)rhost;
-	(void)rhostlen; (void)timestamp; (void)packets; (void)bytes;
-	syslog(LOG_ERR, "get_redirect_rule_by_index() called but should not be used with external script");
-	return -1;
+	(void)ifname; (void)rhostlen; (void)packets; (void)bytes;
+	/* Use internal tracking list */
+	return get_redirect_rule_by_index_from_desc_list(index, eport, proto,
+	                                                  iaddr, iaddrlen, iport,
+	                                                  desc, desclen, timestamp);
 }
 
 int delete_redirect_and_filter_rules(unsigned short eport, int proto)
