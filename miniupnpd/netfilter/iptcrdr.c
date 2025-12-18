@@ -185,7 +185,7 @@ struct rdr_desc {
 static struct rdr_desc * rdr_desc_list = 0;
 
 /* add a description to the list of redirection descriptions */
-static void
+void
 add_redirect_desc(unsigned short eport, int proto,
                   const char * desc, unsigned int timestamp)
 {
@@ -208,7 +208,7 @@ add_redirect_desc(unsigned short eport, int proto,
 }
 
 /* delete a description from the list */
-static void
+void
 del_redirect_desc(unsigned short eport, int proto)
 {
 	struct rdr_desc * p, * last;

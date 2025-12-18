@@ -32,7 +32,6 @@
 #include "netfilter/extscriptrdr.h"
 #include "netfilter/rdr_desc.h"
 #endif
-#endif
 #if defined(USE_PF)
 #include "pf/obsdrdr.h"
 #endif
@@ -515,21 +514,20 @@ upnp_get_redirection_infos(unsigned short eport, const char * protocol,
 		rhost[0] = '\0';
 	
 #if defined(USE_NETFILTER)
-#ifdef USE_EXTERNAL_SCRIPT
 	/* When using external script, query from internal tracking list only */
 	if(use_external_script) {
 		r = get_redirect_rule_from_desc_list(eport, proto_atoi(protocol),
 		                                       iaddr, iaddrlen, iport,
 		                                       desc, desclen, &timestamp);
-	} else
-#endif /* USE_EXTERNAL_SCRIPT */
-#endif /* USE_NETFILTER */
-	{
+	} else {
+#endif
 		r = get_redirect_rule(ext_if_name, eport, proto_atoi(protocol),
 		                      iaddr, iaddrlen, iport, desc, desclen,
 		                      rhost, rhostlen, &timestamp,
 		                      0, 0);
+#if defined(USE_NETFILTER)
 	}
+#endif
 	
 	if(r == 0 &&
 	   timestamp > 0 &&
@@ -561,23 +559,22 @@ upnp_get_redirection_infos_by_index(int index,
 		rhost[0] = '\0';
 	
 #if defined(USE_NETFILTER)
-#ifdef USE_EXTERNAL_SCRIPT
 	/* When using external script, query from internal tracking list only */
 	if(use_external_script) {
 		if(get_redirect_rule_by_index_from_desc_list(index, eport, &proto,
 		                                               iaddr, iaddrlen, iport,
 		                                               desc, desclen, &timestamp) < 0)
 			return -1;
-	} else
-#endif /* USE_EXTERNAL_SCRIPT */
-#endif /* USE_NETFILTER */
-	{
+	} else {
+#endif
 		if(get_redirect_rule_by_index(index, 0/*ifname*/, eport, iaddr, iaddrlen,
 		                              iport, &proto, desc, desclen,
 		                              rhost, rhostlen, &timestamp,
 		                              0, 0) < 0)
 			return -1;
+#if defined(USE_NETFILTER)
 	}
+#endif
 	
 	current_time = upnp_time();
 	*leaseduration = (timestamp > (unsigned int)current_time)
